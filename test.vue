@@ -78,13 +78,13 @@
       <TreeGrid
         ref="treegrid"
         :bordered="false"
-        :collapseAll="true"
         :style="{ height: `calc(100vh - `+easyUITable.tableHeight+`px)`}"
         :data="easyUITable.data"
         :idField="easyUITable.id"
         :checkbox="true"
         :cascadeCheck="false"
         :treeField="easyUITable.treeField"
+        :row-class-name="getRowClass"
         @rowCheck="rowCheck($event)"
         @collapseAll="expandGrid($event)"
         @nodeContextMenu.prevent="$refs.m1.showContextMenu($event.pageX,$event.pageY)"
@@ -168,16 +168,22 @@ export default {
       data: this.getData()
     }
   },
-  mounted() {
-    console.log(this.$refs.treegrid)
-  },
   methods: {
+    getRowClass(row) {
+      if (row.$level === 0) {
+        return 'treegrid-level-0'
+      } else if (row.$level === 1) {
+        return 'treegrid-level-1'
+      } else {
+        return 'treegrid-level-2'
+      }
+    },
 
     handleCollapseAll() {
       this.$refs.treegrid.collapseAll()
     },
     handleExpandAll() {
-      this.$refs.treegrid.collapse(false)
+      this.$refs.treegrid.expandAll()
     },
     ss() {
       const that = this
