@@ -1,403 +1,302 @@
 <template>
   <div>
-    <a-card :bordered="false" style="margin-bottom: 10px;">
-      <!-- 条件搜索 -->
-      <div class="table-page-search-wrapper">
-        <a-form :labelCol="labelCol" :wrapperCol="wrapperCol" ref="queryForm">
-          <a-row :gutter="32">
-            <a-col :span="6" >
-              <a-form-item label="产品名称">
-                <a-input v-model="queryParam.productName" placeholder="请输入产品名称" allow-clear @keyup.enter.native="handleQuery"/>
-              </a-form-item>
-            </a-col>
-            <a-col :span="6" >
-              <a-form-item label="排序">
-                <a-input-number v-model="queryParam.treeSort" :min="0" style="width: 100%"/>
-              </a-form-item>
-            </a-col>
-            <a-col :span="6" >
-              <a-form-item label="产品状态" prop="status">
-                <a-select placeholder="请选择产品状态" v-model="queryParam.status" style="width: 100%" allow-clear>
-                  <a-select-option v-for="(d, index) in statusOptions" :key="index" :value="d.dictValue">{{ d.dictLabel }}</a-select-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col>
-              <span class="table-page-search-submitButtons" style="float: right;">
-                <a-button type="primary" @click="handleQuery"><a-icon type="search" />查询</a-button>
-                <a-button style="margin-left: 8px" @click="resetQuery"><a-icon type="redo" />重置</a-button>
+    <Panel fit="true" :bordered="false" :collapsible="true">
+      <template slot="header">
+        <div class="f-full" style="padding-left: 10px">
+          <!--表格左边搜索框及按钮-->
+          <div class="f-full" style="line-height:30px;padding: 0 10px 0 10px;float:left;">
+            <a-form :form="searchForm">
+              <span style="padding: 0px 5px 0px 5px" v-if="item.type==='input'" v-for="(item,k) in easyUITable.searchList" :key="k">{{ item.label }}：
+                <a-input v-model="searchForm[item.prop]" :style="{width:item.width+'px'}" :placeholder="'输入'+item.label"> </a-input>
               </span>
-            </a-col>
-          </a-row>
-        </a-form>
-      </div>
-    </a-card>
-    <a-card :bordered="false" class="table-card">
-      <!-- 增加 -->
-      <sys-product-add-form
-        v-if="showAddModal"
-        ref="sysProductAddForm"
-        :sysProductOptions="sysProductOptions"
-        :statusOptions="statusOptions"
-        @ok="getList"
-        @select-tree="getTreeSelect"
-        @close="showAddModal = false"
-      />
-      <!-- 编辑 -->
-      <sys-product-edit-form
-        v-if="showEditModal"
-        ref="sysProductEditForm"
-        :sysProductOptions="sysProductOptions"
-        :statusOptions="statusOptions"
-        @ok="getList"
-        @select-tree="getTreeSelect"
-        @close="showEditModal = false"
-      />
-      <advance-table
-        :loading="loading"
-        title="产品表"
-        rowKey="id"
-        @refresh="getList"
-        :expandIconColumnIndex="1"
-        :columns="columns"
-        :data-source="sysProductList"
-        :pagination="false"
-        size="middle"
-        tableKey="base-sysProduct-index-table_grid"
-        :defaultExpandedRowKeys="expandedRowKeys"
-        :expandedRowKeys="expandedRowKeys"
-        :expandIcon="expandIcon"
-        @expand="expandNode"
-        :indentSize="16"
-        :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }">
-        <div class="table-operations" slot="button">
-          <a-button type="primary" @click="handleAdd" v-hasPermi="['customer:sysProduct:add']">
-            <a-icon type="plus" />新增
-          </a-button>
-          <a-button type="danger" v-if="!multiple" :disabled="multiple" @click="handleDelete" v-hasPermi="['customer:sysProduct:remove']">
-            <a-icon type="delete" />删除
-          </a-button>
-          <a-button type="" @click="handleExpand" v-hasPermi="['system:testTree:query']">
-            <a-icon type="caret-down" />展开
-          </a-button>
-          <a-button type="" @click="handleCollapse" v-hasPermi="['system:testTree:query']">
-            <a-icon type="caret-up" />折叠
-          </a-button>
+              <span style="padding: 0px 5px 0px 5px" v-else-if="item.type==='select'">{{ item.label }}：
+                <div class="f-full" style="display: inline-block">
+                  <a-select default-value="lucy" v-model="searchForm[item.prop]" :style="{width:item.width+'px'}">
+                    <a-select-option value="jack">
+                      Jack
+                    </a-select-option>
+                    <a-select-option value="lucy">
+                      Lucy
+                    </a-select-option>
+                    <a-select-option value="Yiminghe">
+                      yiminghe
+                    </a-select-option>
+                  </a-select>
+                </div>
+              </span>
+              <span style="padding: 0px 5px 0px 5px" v-else-if="item.type==='Date'">{{ item.label }}：
+                <div class="f-full" style="display: inline-block">
+                  <a-date-picker v-model="searchForm[item.prop]" :style="{width:item.width+'px'}" />
+                </div>
+              </span>
+              <span style="padding: 0px 5px 0px 5px" v-else-if="item.type==='DateRang'">{{ item.label }}：
+                <div class="f-full" style="display: inline-block">
+                  <a-range-picker v-model="searchForm[item.prop]" :style="{width:item.width+'px'}" />
+                </div>
+              </span>
+              <a-button
+                style="margin-left: 2px"
+                v-else-if="item.type==='button'"
+                type="primary"
+                @click="item.handler">
+                <a-icon :type="item.icon"/>{{ item.label }}</a-button>
+            </a-form>
+          </div>
+          <!--表格右边按钮-->
+          <div style="line-height:30px;padding: 0 10px 0 10px; float:right;">
+            <a-button
+              style="margin-left: 2px"
+              :type="bt.type"
+              @click="bt.handler"
+              v-for="(bt,k) in easyUITable.rightButton.data.slice(0,2)"
+              :key="k"
+              v-if="bt.code !=='delete'"
+              v-hasPermi="[bt.hasPermi]">
+              <a-icon :type="bt.icon"/>{{ bt.name }}</a-button>
+            <a-button
+              style="margin-left: 2px"
+              :type="bt.type"
+              @click="bt.handler"
+              v-else-if="bt.code ==='delete'"
+              :disabled="!easyUITable.multiple"
+              v-hasPermi="[bt.hasPermi]">
+              <a-icon :type="bt.icon"/>{{ bt.name }}</a-button>
+            <a-dropdown v-if="easyUITable.rightButton.data.length>easyUITable.rightButton.showNum">
+              <a-button type="default" :ghost="true" style="margin: 0px 15px 0px 2px; ">更多功能
+                <a-icon type="down"/>
+              </a-button>
+              <a-menu slot="overlay">
+                <a-menu-item v-hasPermi="[bt1.hasPermi]" v-for="(bt1,k1) in easyUITable.rightButton.data" :key="k1" v-if="k1>easyUITable.rightButton.showNum">
+                  <a type="">
+                    <a-icon :type="bt1.icon"/> {{ bt1.name }} </a>
+                </a-menu-item>
+              </a-menu>
+            </a-dropdown>
+          </div>
         </div>
-        <span slot="status" slot-scope="{record}">
-          <a-badge :status="record.status == '0' ? 'processing' : 'error'" :text=" statusFormat(record) " />
-        </span>
-        <span slot="operation" slot-scope="{text, record}">
-          <a @click="handleUpdate(record)" v-hasPermi="['customer:sysProduct:edit']">
-            修改
-          </a>
-          <a-divider type="vertical" v-hasPermi="['customer:sysProduct:add']" />
-          <a @click="handleAdd(record)" v-hasPermi="['customer:sysProduct:add']">
-            添加子节点
-          </a>
-          <a-divider type="vertical" v-hasPermi="['customer:sysProduct:remove']"/>
-          <a @click="handleDelete(record)" v-hasPermi="['customer:sysProduct:remove']">
-            删除
-          </a>
-        </span>
-      </advance-table>
-    </a-card>
+      </template>
+      <TreeGrid
+        ref="treegrid"
+        :bordered="false"
+        :collapseAll="true"
+        :style="{ height: `calc(100vh - `+easyUITable.tableHeight+`px)`}"
+        :data="easyUITable.data"
+        :idField="easyUITable.id"
+        :checkbox="true"
+        :cascadeCheck="false"
+        :treeField="easyUITable.treeField"
+        @rowCheck="rowCheck($event)"
+        @collapseAll="expandGrid($event)"
+        @nodeContextMenu.prevent="$refs.m1.showContextMenu($event.pageX,$event.pageY)"
+      >
+        <GridColumn align="center" cellCss="datagrid-td-rownumber" width="30">
+          <template slot="body" slot-scope="scope">
+            {{ scope.row_index }}
+          </template>
+        </GridColumn>
+        <GridColumn
+          :columnResizing="false"
+          :columnMoving="false"
+          resizeHandle="left"
+          resizable="true"
+          :field="col.field"
+          :align="col.align"
+          v-if="k===0"
+          :title="col.title"
+          v-for="(col,k) in easyUITable.columns"
+          :key="k">
+          <template slot="header" slot-scope="scope">
+
+            <span style="float: left;padding-left: 0px">
+              <a-button-group>
+                <a-button style="padding-inline-start: initial;margin-left: -4px" type="dashed" icon="caret-down" :ghost="true" @click="handleExpandAll" >
+                  展开
+                </a-button>
+                <a-button style="padding-inline-start: initial;" icon="caret-up" type="dashed" :ghost="true" @click="handleCollapseAll" >
+                  折叠
+                </a-button>
+              </a-button-group>
+            </span>
+            <span style="margin-left: 35px; line-height:32px;">{{ col.title }}</span>
+
+          </template>
+        </GridColumn>
+        <GridColumn
+          :field="col.field"
+          :align="col.align"
+          v-else
+          :title="col.title"
+          :key="k">
+        </gridcolumn>
+        <GridColumn field="cat" title="操作" align="center" width="150">
+          <template slot="body" slot-scope="scope">
+            <ButtonGroup style="height:24px">
+              <LinkButton @click="editRow(scope.row)" >编辑</LinkButton>
+              <LinkButton @click="deleteRow(scope.row)">删除</LinkButton>
+            </ButtonGroup>
+          </template>
+        </GridColumn>
+      </TreeGrid>
+    </Panel>
+    <!--头部面板右键菜单 菜单隐藏或显示-->
+    <Menu ref="m1" :visible.sync="menuVisible" :style="menuStyle" @itemClick="onItemClick($event)">
+      <MenuItem text="选择显示或隐藏字段" :disabled="true"></MenuItem>
+    </Menu>
   </div>
 </template>
+
 <script>
-import { listSysProduct, delSysProduct, searchSysProductList, getInitData, listTree, listTreeExcludeChild } from '@/api/customer/sysProduct'
-import AdvanceTable from '@/components/pt/table/AdvanceTable'
-import SysProductAddForm from '@/views/customer/sysproduct/modules/SysProductAddForm'
-import SysProductEditForm from '@/views/customer/sysproduct/modules/SysProductEditForm'
-import allIcon from '@/core/icons'
+
 export default {
-  name: 'SysProduct',
-  components: {
-    AdvanceTable,
-    SysProductAddForm,
-    SysProductEditForm
-
-  },
-  data () {
-    return {
-      showAddModal: false,
-      showEditModal: false,
-      allIcon,
-      iconVisible: false,
-      // 遮罩层
-      loading: true,
-      // 选中数组
-      ids: [],
-      multiple: true,
-      // 选中的主键集合
-      selectedRowKeys: [],
-      // 选中的数据集合
-      selectedRows: [],
-      // 展开的主键集合
-      expandedRowKeys: [],
-      // label的百分比
-      labelCol: { span: 6 },
-      // 内容区域的百分比
-      wrapperCol: { span: 18 },
-      // 高级搜索 展开/关闭
-      advanced: false,
-      sysProductOptions: [],
-      // 产品表表格数据
-      sysProductList: [],
-      // 产品状态字典
-      statusOptions: [],
-      // 查询参数
-      queryParam: {
-        productName: undefined,
-
-        treeSort: undefined,
-
-        status: undefined
-
-      },
-      columns: [
-        {
-          title: '产品名称',
-          dataIndex: 'productName',
-          ellipsis: true,
-          align: 'left',
-          width: '25%'
-        },
-        {
-          title: '排序',
-          dataIndex: 'treeSort',
-          align: 'right',
-          width: '25%'
-        },
-        {
-          title: '产品状态',
-          dataIndex: 'status',
-          scopedSlots: { customRender: 'status' },
-          align: 'center',
-          width: '25%'
-        },
-        {
-          title: '操作',
-          dataIndex: 'operation',
-          align: 'center',
-          width: '25%',
-          scopedSlots: { customRender: 'operation' }
-        }
-      ]
+  name: 'CustomTreeGrid',
+  props:{
+    tableData:{
+      type:Object,
+      default:null
     }
   },
-  created () {
-    this.getList()
-    getInitData('is_active').then(response => {
-      this.statusOptions = response.data.is_active
-    })
+  data() {
+    return {
+      size: 'small',
+      menuVisible: false,
+      menuStyle: {
+        left: 0,
+        top: 0,
+      },
+      searchForm:{},
+      easyUITable:this.tableData,
+      data: this.getData()
+    }
+  },
+  mounted() {
+    console.log(this.$refs.treegrid)
   },
   methods: {
-    // 展开收缩时需要动态修改展开行集合
-    expandNode (expanded, record) {
-      if (expanded) {
-        this.expandedRowKeys.push(record.id)
-      } else {
-        this.expandedRowKeys = this.expandedRowKeys.filter(
-          function (item) { return item !== record.id }
-        )
-      }
-      if (expanded && record.children.length === 0) {
-        this.loading = true
-        listSysProduct(this.queryParam, record.id, 1).then(response => {
-          record.children = response.data
-          this.loading = false
-        })
-      }
-    },
-    onSelectChange (selectedRowKeys, selectedRows, expandedRowKeys) {
-      this.selectedRowKeys = selectedRowKeys
-      this.selectedRows = selectedRows
-      this.ids = this.selectedRows.map(item => item.id)
-    },
-    /** 查询产品表列表 */
-    getList () {
-      this.expandedRowKeys = []
-      this.loading = true
-      listSysProduct(this.queryParam).then(response => {
-        console.log(response)
-        this.expandTree(response.data, 1, this.expandedRowKeys)
-        this.sysProductList = response.data
-        this.loading = false
-      })
-    },
-    // 产品状态字典翻译
-    statusFormat (row) {
-      if (row.status) {
-        return this.selectDictLabel(this.statusOptions, row.status)
-      } else {
-        return ''
-      }
-    },
-    /** 搜索按钮操作 */
-    handleQuery () {
-        if(
-        (this.queryParam.productName === undefined || this.queryParam.productName === '') &&
 
-        (this.queryParam.treeSort === undefined || this.queryParam.treeSort === '') &&
-
-        (this.queryParam.status === undefined || this.queryParam.status === '')) {
-        this.expandedRowKeys = []
-        this.getList()
-      } else {
-        this.loading = true
-        searchSysProductList(this.queryParam).then(response => {
-            this.expandedRowKeys = []
-            if (response.data.length !== 0) {
-              this.getAllSysProductNode(response.data)
-              this.sysProductList = response.data
-            } else {
-              this.sysProductList = []
+    handleCollapseAll() {
+      this.$refs.treegrid.collapseAll()
+    },
+    handleExpandAll() {
+      this.$refs.treegrid.collapse(false)
+    },
+    ss() {
+      const that = this
+      const rowArr = that.$refs.ttt.getCheckedRows()
+      console.log(rowArr)
+    },
+     expandGrid() {
+       const nodes = this.$refs.treegrid1.ttt('getCheckedNodes')
+       nodes.forEach(node => {
+         node.collapse(true)
+       })
+    },
+    checkRow(event){
+      console.log(event)
+    },
+    // handleAdd(){
+    //   console.log('handleAdd')
+    // },
+    getData() {
+      return [
+        {
+          id: 1,
+          name: 'C',
+          size: '',
+          date: '02/19/2010',
+          iconCls: 'none',
+          children: [
+            {
+              id: 2,
+              name: 'Program Files',
+              size: '120 MB',
+              date: '03/20/2010',
+              children: [
+                {
+                  id: 21,
+                  name: 'Java',
+                  size: '',
+                  date: '01/13/2010',
+                  state: 'closed',
+                  children: [
+                    {
+                      id: 211,
+                      name: 'java.exe',
+                      size: '142 KB',
+                      date: '01/13/2010'
+                    },
+                    {
+                      id: 212,
+                      name: 'jawt.dll',
+                      size: '5 KB',
+                      date: '01/13/2010'
+                    }
+                  ]
+                },
+                {
+                  id: 22,
+                  name: 'MySQL',
+                  size: '',
+                  date: '01/13/2010',
+                  state: 'closed',
+                  children: [
+                    {
+                      id: 221,
+                      name: 'my.ini',
+                      size: '10 KB',
+                      date: '02/26/2009'
+                    },
+                    {
+                      id: 222,
+                      name: 'my-huge.ini',
+                      size: '5 KB',
+                      date: '02/26/2009'
+                    },
+                    {
+                      id: 223,
+                      name: 'my-large.ini',
+                      size: '5 KB',
+                      date: '02/26/2009'
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              id: 3,
+              name: 'eclipse',
+              size: '',
+              date: '01/20/2010',
+              children: [
+                {
+                  id: 31,
+                  name: 'eclipse.exe',
+                  size: '56 KB',
+                  date: '05/19/2009'
+                },
+                {
+                  id: 32,
+                  name: 'eclipse.ini',
+                  size: '1 KB',
+                  date: '04/20/2010'
+                },
+                {
+                  id: 33,
+                  name: 'notice.html',
+                  size: '7 KB',
+                  date: '03/17/2005'
+                }
+              ]
             }
-            this.loading = false
-          }
-        )
-      }
-    },
-    /** 重置按钮操作 */
-    resetQuery () {
-      this.queryParam = {
-        pageNum: 1,
-        pageSize: 10,
-        productName: undefined,
-
-        treeSort: undefined,
-
-        status: undefined
-
-      }
-      this.handleQuery()
-    },
-    getAllSysProductNode (nodes) {
-      if (!nodes || nodes.length === 0) {
-        return []
-      }
-      nodes.forEach(node => {
-        if (node.children.length !== 0) {
-          this.expandedRowKeys.push(node.id)
+          ]
         }
-        return this.getAllSysProductNode(node.children)
-      })
-    },
-    toggleAdvanced () {
-      this.advanced = !this.advanced
-    },
-    handleAdd (record) {
-      this.showAddModal = true
-      this.$nextTick(() => (
-        this.$refs.sysProductAddForm.handleAdd(record)
-      ))
-    },
-    handleExpand (record) {
-      this.expandedRowKeys = []
-      this.loading = true
-      searchSysProductList(this.queryParam).then(response => {
-        this.expandedRowKeys = []
-        if (response.data.length !== 0) {
-          this.getAllSysProductNode(response.data)
-          this.sysProductList = response.data
-        } else {
-          this.sysProductList = []
-        }
-        this.loading = false
-      })
-    },
-    handleCollapse (record) {
-      this.expandedRowKeys = []
-      this.loading = true
-      listSysProduct(this.queryParam).then(response => {
-        this.expandTree(response.data, 1, this.expandedRowKeys)
-        this.sysProductList = response.data
-        this.loading = false
-      })
-    },
-    handleUpdate (record, ids) {
-      this.showEditModal = true
-      this.$nextTick(() => (
-        this.$refs.sysProductEditForm.handleUpdate(record, ids)
-      ))
-    },
-    onSelectChange (selectedRowKeys, selectedRows) {
-      this.selectedRowKeys = selectedRowKeys
-      this.selectedRows = selectedRows
-      this.ids = this.selectedRows.map(item => item.id)
-      this.multiple = !selectedRowKeys.length
-    },
-    /** 查询菜单下拉树结构 */
-    getTreeSelect (row) {
-      if (row) {
-        listTreeExcludeChild(row.id, '99').then(response => {
-          this.sysProductOptions = []
-          const sysProduct = { id: 0, productName: '根节点', children: [] }
-          sysProduct.children = response.data
-          this.sysProductOptions.push(sysProduct)
-        })
-      } else {
-        listTree('0', '99').then(response => {
-          this.sysProductOptions = []
-          const sysProduct = { id: 0, productName: '根节点', children: [] }
-          sysProduct.children = response.data
-          this.sysProductOptions.push(sysProduct)
-        })
-      }
-    },
-    /** 删除按钮操作 */
-    handleDelete (row) {
-      var that = this
-      const sysProductIds = row.id || this.ids
-      this.$confirm({
-        title: '确认删除所选中数据?',
-        content: '当前选中的数据',
-        onOk () {
-          return delSysProduct(sysProductIds)
-            .then(() => {
-              if (row !== null) {
-                that.removeTreeNode(that.sysProductList, row)
-              } else {
-                 that.onSelectChange([], [], [])
-                 that.getList()
-              }
-              that.$message.success(
-                '删除成功',
-                3
-              )
-          })
-        },
-        onCancel () {}
-      })
-    },
-    expandIcon (props) {
-      if (props.record.treeLeaf === 'y') {
-        return <span style="margin-right:22px"></span>
-      } else {
-        if (props.expanded) {
-          return (
-            <a style="color: 'black',margin-right:0px"
-               onClick={(e) => {
-                 props.onExpand(props.record, e)
-               }}
-            >
-              <a-icon type="caret-down" />
-            </a>
-          )
-        } else {
-          return (
-            <a style="color: 'black' ,margin-right:0px"
-               onClick={(e) => {
-                 props.onExpand(props.record, e)
-               }}
-            >
-              <a-icon type="caret-right" />
-            </a>
-          )
-        }
-      }
+      ]
     }
   }
 }
 </script>
+
+<style scoped>
+.parent-component .ant-form {
+  margin-bottom: 0;
+}
+</style>
