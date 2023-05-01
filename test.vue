@@ -76,7 +76,7 @@
         </div>
       </template>
       <TreeGrid
-        ref="treegrid"
+        ref="tree-grid"
         :bordered="false"
         :style="{ height: `calc(100vh - `+easyUITable.tableHeight+`px)`}"
         :data="easyUITable.data"
@@ -180,10 +180,10 @@ export default {
     },
 
     handleCollapseAll() {
-      this.$refs.treegrid.collapseAll()
+      this.$refs.tree-grid.collapseAll()
     },
     handleExpandAll() {
-      this.$refs.treegrid.expandAll()
+      this.$refs.tree-grid.expandAll()
     },
     ss() {
       const that = this
